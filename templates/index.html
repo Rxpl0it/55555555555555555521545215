@@ -1,0 +1,191 @@
+<!-- templates/index.html -->
+{% extends 'base.html' %}
+
+{% block title %}Scanner - SQL Vulnerability Scanner{% endblock %}
+
+{% block content %}
+<div class="scanner-container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <!-- Scan Controls -->
+        <div class="scan-controls">
+            <h2><i class="fas fa-bug"></i> SQL Vulnerability Scanner</h2>
+            <form method="post" enctype="multipart/form-data" class="form-inline">
+                <div class="form-group mb-2 mr-2">
+                    <label for="url_file" class="sr-only">Upload URLs</label>
+                    <div class="custom-file">
+                        <input type="file" class="custom-file-input" id="url_file" name="url_file" accept=".txt" required>
+                        <label class="custom-file-label" for="url_file"><i class="fas fa-file-upload"></i> Choose file</label>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary mb-2 mr-2" {% if scanning %}disabled{% endif %}>
+                    <i class="fas fa-play"></i> Start Scan
+                </button>
+                <button type="button" id="stopButton" class="btn btn-danger mb-2 mr-2" {% if not scanning %}disabled{% endif %}>
+                    <i class="fas fa-stop"></i> Stop Scan
+                </button>
+                <button type="button" id="resetButton" class="btn btn-secondary mb-2">
+                    <i class="fas fa-sync-alt"></i> Reset
+                </button>
+            </form>
+        </div>
+        <!-- SPM Counter -->
+        <div class="spm-counter text-right">
+            <div class="counter-card">
+                <i class="fas fa-chart-line"></i>
+                <h3>Average SPM</h3>
+                <h2 id="spm_counter">0</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Counters -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="counter-card">
+                <i class="fas fa-spinner fa-pulse"></i>
+                <h3>URLs Scanned</h3>
+                <h2 id="total_urls_scanned">0</h2>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="counter-card">
+                <i class="fas fa-bug"></i>
+                <h3>Vulnerabilities Found</h3>
+                <h2 id="total_vulnerabilities_found">0</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- SPM Line Chart -->
+    <div class="mt-4">
+        <h4>Scans Per Minute (SPM)</h4>
+        <canvas id="spmChart" width="400" height="200"></canvas>
+    </div>
+
+    <!-- Download Button -->
+    <div class="mt-4 text-left">
+        <a href="{{ url_for('download_vulnerable_urls') }}" class="btn btn-success download-button" {% if not scan_results %}disabled{% endif %}>
+            <i class="fas fa-download"></i> Download Vulnerable URLs
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const ctx = document.getElementById('spmChart').getContext('2d');
+    let spmChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [], // Time labels (minutes)
+            datasets: [{
+                label: 'SPM (Scans per Minute)',
+                data: [], // SPM data
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                xAxes: [{
+                    type: 'linear',
+                    position: 'bottom',
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Time (minutes)'
+                    },
+                    ticks: {
+                        fontColor: '#ECECEC'
+                    }
+                }],
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        fontColor: '#ECECEC'
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'SPM'
+                    }
+                }]
+            },
+            legend: {
+                labels: {
+                    fontColor: '#ECECEC'
+                }
+            }
+        }
+    });
+
+    function updateCountersAndChart() {
+        fetch('/status')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('total_urls_scanned').innerText = data.total_urls_scanned;
+                document.getElementById('total_vulnerabilities_found').innerText = data.total_vulnerabilities_found;
+                document.getElementById('spm_counter').innerText = data.spm;
+
+                const stopButton = document.getElementById('stopButton');
+                if (data.scanning) {
+                    stopButton.disabled = false;
+                } else {
+                    stopButton.disabled = true;
+                }
+
+                // Update SPM chart
+                if (data.spm_data.length > 0) {
+                    spmChart.data.labels = data.spm_data.map((_, index) => index + 1);  // Minute labels
+                    spmChart.data.datasets[0].data = data.spm_data;
+                    spmChart.update();
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching status:', error);
+            });
+    }
+
+    setInterval(updateCountersAndChart, 1000);  // Update every second
+
+    document.getElementById('stopButton').addEventListener('click', function() {
+        fetch('/stop_scan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).then(response => response.json()).then(data => {
+            if (data.status === 'stopping_scan') {
+                alert('Stopping the scan...');
+            }
+        }).catch(error => {
+            console.error('Error stopping scan:', error);
+        });
+    });
+
+    document.getElementById('resetButton').addEventListener('click', function() {
+        fetch('/reset_scan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).then(response => response.json()).then(data => {
+            if (data.status === 'reset_scan') {
+                alert('Scan reset successfully!');
+                updateCountersAndChart();
+            }
+        }).catch(error => {
+            console.error('Error resetting scan:', error);
+        });
+    });
+
+    // Update custom file input label with selected file name
+    document.querySelector('.custom-file-input').addEventListener('change', function(e) {
+        let fileName = document.getElementById("url_file").files[0].name;
+        let nextSibling = e.target.nextElementSibling
+        nextSibling.innerText = fileName
+    });
+</script>
+{% endblock %}

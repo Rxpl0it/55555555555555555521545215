@@ -1,0 +1,21 @@
+{
+    "scanner": {
+        "concurrent_threads": 400,
+        "payloads": [
+            "'123"
+        ],
+        "sql_errors": [
+            "your SQL syntax;",
+            "You have an error in your SQL syntax",
+            "MySQL server version for the right syntax to use near",
+            "right syntax to use near '123'"
+        ],
+        "request_timeout": 10
+    },
+    "traffic_checker": {
+        "request_delay": 4.0,
+        "max_retries": 1,
+        "min_visitors": 100000
+    },
+    "vuln_anti_public": true
+}

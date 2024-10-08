@@ -1,0 +1,222 @@
+<!-- templates/dashboard.html -->
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - SQL Vulnerability Scanner{% endblock %}
+
+{% block content %}
+<h1 class="mb-4 text-center"><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+
+<!-- Statistics Cards -->
+<div class="row mb-5">
+    <div class="col-md-3">
+        <div class="counter-card">
+            <i class="fas fa-file-alt"></i>
+            <h3>Total URLs Scanned</h3>
+            <h2>{{ total_urls_scanned }}</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="counter-card">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>Total Vulnerabilities Found</h3>
+            <h2>{{ total_vulnerabilities_found }}</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="counter-card">
+            <i class="fas fa-chart-line"></i>
+            <h3>Scans Per Minute (SPM)</h3>
+            <h2>{{ spm }}</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="counter-card">
+            <i class="fas fa-users"></i>
+            <h3>Total Traffic Checks</h3>
+            <h2>{{ cumulative_data.total_traffic_checks }}</h2>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="row">
+    <!-- Scans Per Minute Chart -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-chart-line"></i> Scans Per Minute (SPM) Over Time</h5>
+                <i class="fas fa-sync-alt refresh-icon" id="refreshSPM" title="Refresh Chart"></i>
+            </div>
+            <div class="card-body">
+                <canvas id="spmChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Vulnerabilities Found Chart -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-bug"></i> Vulnerabilities Found Over Time</h5>
+                <i class="fas fa-sync-alt refresh-icon" id="refreshVuln" title="Refresh Chart"></i>
+            </div>
+            <div class="card-body">
+                <canvas id="vulnChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize SPM Chart
+    var spmCtx = document.getElementById('spmChart').getContext('2d');
+    var spmChart = new Chart(spmCtx, {
+        type: 'line',
+        data: {
+            labels: [], // To be filled via AJAX
+            datasets: [{
+                label: 'Scans Per Minute',
+                data: [], // SPM data
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                xAxes: [{
+                    type: 'linear',
+                    position: 'bottom',
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Data Points'
+                    },
+                    ticks: {
+                        fontColor: '#ECECEC'
+                    }
+                }],
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        fontColor: '#ECECEC'
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'SPM'
+                    }
+                }]
+            },
+            legend: {
+                labels: {
+                    fontColor: '#ECECEC'
+                }
+            }
+        }
+    });
+
+    // Initialize Vulnerabilities Chart
+    var vulnCtx = document.getElementById('vulnChart').getContext('2d');
+    var vulnChart = new Chart(vulnCtx, {
+        type: 'bar',
+        data: {
+            labels: [], // To be filled via AJAX
+            datasets: [{
+                label: 'Vulnerabilities Found',
+                data: [], // Vulnerabilities data
+                backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                xAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Data Points'
+                    },
+                    ticks: {
+                        fontColor: '#ECECEC'
+                    }
+                }],
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        fontColor: '#ECECEC'
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Vulnerabilities'
+                    }
+                }]
+            },
+            legend: {
+                labels: {
+                    fontColor: '#ECECEC'
+                }
+            }
+        }
+    });
+
+    // Function to fetch and update SPM Chart
+    function updateSPMChart() {
+        fetch('{{ url_for("status") }}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.spm_data.length > 0) {
+                    spmChart.data.labels = data.spm_data.map((_, index) => index + 1);
+                    spmChart.data.datasets[0].data = data.spm_data;
+                    spmChart.update();
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching SPM data:', error);
+            });
+    }
+
+    // Function to fetch and update Vulnerabilities Chart
+    function updateVulnChart() {
+        fetch('{{ url_for("status") }}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.total_vulnerabilities_found >= 0) {
+                    // Assuming vulnerabilities found over time correlates with SPM data
+                    vulnChart.data.labels = data.spm_data.map((_, index) => index + 1);
+                    vulnChart.data.datasets[0].data = data.spm_data.map(spm => Math.round(spm * 0.1)); // Example mapping
+                    vulnChart.update();
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching Vulnerabilities data:', error);
+            });
+    }
+
+    // Initial data load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateSPMChart();
+        updateVulnChart();
+    });
+
+    // Refresh icons click handlers
+    document.getElementById('refreshSPM').addEventListener('click', function() {
+        updateSPMChart();
+    });
+
+    document.getElementById('refreshVuln').addEventListener('click', function() {
+        updateVulnChart();
+    });
+
+    // Auto-refresh every 10 seconds
+    setInterval(function() {
+        updateSPMChart();
+        updateVulnChart();
+    }, 10000);
+</script>
+{% endblock %}

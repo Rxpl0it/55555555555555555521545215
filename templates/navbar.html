@@ -1,0 +1,24 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <a class="navbar-brand" href="{{ url_for('dashboard') }}"><i class="fas fa-shield-alt"></i> SQL Scanner</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ml-auto">
+            <!-- Dashboard Tab Positioned to the Left of Scanner -->
+            <li class="nav-item {% if request.path == '/dashboard' %}active{% endif %}">
+                <a class="nav-link" href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            </li>
+            <li class="nav-item {% if request.path == '/' %}active{% endif %}">
+                <a class="nav-link" href="{{ url_for('scanner') }}"><i class="fas fa-bug"></i> Scanner</a>
+            </li>
+            <li class="nav-item {% if request.path == '/traffic_checker' %}active{% endif %}">
+                <a class="nav-link" href="{{ url_for('traffic_checker') }}"><i class="fas fa-chart-line"></i> Traffic Checker</a>
+            </li>
+            <li class="nav-item {% if request.path == '/settings' %}active{% endif %}">
+                <a class="nav-link" href="{{ url_for('settings_page') }}"><i class="fas fa-cog"></i> Settings</a>
+            </li>
+        </ul>
+    </div>
+</nav>

@@ -1,0 +1,10 @@
+{
+    "scanner": {
+        "total_urls_scanned": 0,
+        "total_vulnerabilities_found": 0
+    },
+    "traffic_checker": {
+        "total_traffic_checks": 3,
+        "total_urls_over_target": 3
+    }
+}

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Traffic Checker - SQL Vulnerability Scanner</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.1/css/all.css">
+    <!-- Chart.js for Traffic Chart (optional) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+    <div class="container traffic-checker-container mt-4">
+        <h2 class="mb-4"><i class="fas fa-chart-line"></i> Traffic Checker</h2>
+        <form id="trafficForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="url_file"><i class="fas fa-file-upload"></i> Upload URL List (TXT)</label>
+                <div class="custom-file">
+                    <input type="file" class="custom-file-input" id="url_file" name="url_file" accept=".txt" required>
+                    <label class="custom-file-label" for="url_file"><i class="fas fa-file-upload"></i> Choose file</label>
+                </div>
+                <small class="form-text text-muted">Upload a TXT file containing one URL per line.</small>
+            </div>
+            <button type="submit" class="btn btn-primary" id="startTrafficButton">
+                <i class="fas fa-play"></i> Start Traffic Check
+            </button>
+            <button type="button" id="stopTrafficButton" class="btn btn-danger" disabled>
+                <i class="fas fa-stop"></i> Stop Traffic Check
+            </button>
+            <button type="button" id="resetTrafficButton" class="btn btn-secondary">
+                <i class="fas fa-sync-alt"></i> Reset
+            </button>
+        </form>
+
+        <!-- Live Counters -->
+        <div class="traffic-live-counters mt-4">
+            <div class="counter-card">
+                <i class="fas fa-spinner fa-pulse"></i>
+                <h3>URLs Scanned</h3>
+                <h2 id="traffic_total_urls_scanned">0</h2>
+            </div>
+            <div class="counter-card">
+                <i class="fas fa-users"></i>
+                <h3>URLs Over Visitor Target</h3>
+                <h2 id="traffic_urls_over_target">0</h2>
+            </div>
+        </div>
+
+        <!-- Traffic Results Download -->
+        <div class="mt-4 text-left">
+            <a href="{{ url_for('download_traffic_results') }}" class="btn btn-success download-button" id="downloadTrafficButton" disabled>
+                <i class="fas fa-download"></i> Download Results
+            </a>
+        </div>
+    </div>
+
+    <!-- Modal for Notifications -->
+    <div class="modal fade" id="trafficModal" tabindex="-1" role="dialog" aria-labelledby="trafficModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content bg-dark text-white">
+          <div class="modal-header">
+            <h5 class="modal-title" id="trafficModalLabel">Notification</h5>
+            <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body" id="trafficModalBody">
+            <!-- Dynamic Content -->
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JavaScript to handle Traffic Checker functionality -->
+    <!-- jQuery and Bootstrap JS for Modal functionality -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    
+    <script>
+        $(document).ready(function() {
+            // Update custom file input label with selected file name
+            $('.custom-file-input').on('change', function() {
+                let fileName = $(this).val().split('\\').pop();
+                $(this).next('.custom-file-label').addClass("selected").html('<i class="fas fa-file-upload"></i> ' + fileName);
+            });
+
+            // Handle form submission via AJAX
+            $('#trafficForm').on('submit', function(e) {
+                e.preventDefault();  // Prevent default form submission
+                let formData = new FormData(this);
+                
+                // Disable Start button and enable Stop button
+                $('#startTrafficButton').prop('disabled', true);
+                $('#stopTrafficButton').prop('disabled', false);
+                $('#resetTrafficButton').prop('disabled', true);
+                $('#downloadTrafficButton').prop('disabled', true);
+
+                $.ajax({
+                    url: "{{ url_for('traffic_checker') }}",
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function(response) {
+                        $('#trafficModalBody').text('Traffic check started successfully!');
+                        $('#trafficModal').modal('show');
+                    },
+                    error: function(xhr, status, error) {
+                        $('#trafficModalBody').text('Error starting traffic check: ' + xhr.responseJSON.message);
+                        $('#trafficModal').modal('show');
+                        // Re-enable Start button and disable Stop button
+                        $('#startTrafficButton').prop('disabled', false);
+                        $('#stopTrafficButton').prop('disabled', true);
+                        $('#resetTrafficButton').prop('disabled', false);
+                    }
+                });
+            });
+
+            // Handle Stop Traffic Check
+            $('#stopTrafficButton').on('click', function() {
+                $.ajax({
+                    url: "{{ url_for('stop_traffic') }}",
+                    type: 'POST',
+                    success: function(response) {
+                        $('#trafficModalBody').text('Stopping the traffic check...');
+                        $('#trafficModal').modal('show');
+                        // Disable Stop button
+                        $('#stopTrafficButton').prop('disabled', true);
+                        $('#resetTrafficButton').prop('disabled', false);
+                    },
+                    error: function(xhr, status, error) {
+                        $('#trafficModalBody').text('Error stopping traffic check: ' + xhr.responseJSON.message);
+                        $('#trafficModal').modal('show');
+                    }
+                });
+            });
+
+            // Handle Reset Traffic Check
+            $('#resetTrafficButton').on('click', function() {
+                $.ajax({
+                    url: "{{ url_for('reset_traffic') }}",
+                    type: 'POST',
+                    success: function(response) {
+                        $('#trafficModalBody').text('Traffic check reset successfully!');
+                        $('#trafficModal').modal('show');
+                        // Reset counters
+                        $('#traffic_total_urls_scanned').text('0');
+                        $('#traffic_urls_over_target').text('0');
+                        // Enable Start button and disable Stop button
+                        $('#startTrafficButton').prop('disabled', false);
+                        $('#stopTrafficButton').prop('disabled', true);
+                        $('#downloadTrafficButton').prop('disabled', true);
+                        // Reset file input
+                        $('#url_file').val('');
+                        $('.custom-file-label').html('<i class="fas fa-file-upload"></i> Choose file');
+                    },
+                    error: function(xhr, status, error) {
+                        $('#trafficModalBody').text('Error resetting traffic check: ' + xhr.responseJSON.message);
+                        $('#trafficModal').modal('show');
+                    }
+                });
+            });
+
+            // Function to update live counters
+            function updateTrafficCounters() {
+                $.ajax({
+                    url: "{{ url_for('traffic_status') }}",
+                    type: 'GET',
+                    success: function(data) {
+                        $('#traffic_total_urls_scanned').text(data.total_urls_scanned);
+                        $('#traffic_urls_over_target').text(data.urls_over_min_visitors);
+                        
+                        if (data.scanning_traffic) {
+                            $('#downloadTrafficButton').prop('disabled', true);
+                        } else {
+                            if (data.urls_over_min_visitors > 0) {
+                                $('#downloadTrafficButton').prop('disabled', false);
+                            }
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error fetching traffic status:', error);
+                    }
+                });
+            }
+
+            // Update counters every second
+            setInterval(updateTrafficCounters, 1000);
+        });
+    </script>
+</body>
+</html>

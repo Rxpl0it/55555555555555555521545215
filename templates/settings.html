@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Settings - SQL Vulnerability Scanner</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.1/css/all.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        /* Additional custom styles for better appearance */
+        body {
+            background-color: #2c2f33;
+            color: #ffffff;
+        }
+        .settings-container {
+            background-color: #23272a;
+            padding: 30px;
+            border-radius: 10px;
+        }
+        .settings-container h2, .settings-container h4 {
+            color: #ffffff;
+        }
+        .form-group label {
+            color: #ffffff;
+        }
+        .btn-primary, .btn-success, .btn-danger, .btn-secondary {
+            border: none;
+        }
+        .btn-primary:hover, .btn-success:hover, .btn-danger:hover, .btn-secondary:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+    <div class="container settings-container mt-4">
+        <h2 class="mb-4"><i class="fas fa-cog"></i> Settings</h2>
+        <form method="POST" class="mt-3">
+            <h4><i class="fas fa-bug"></i> SQL Vulnerability Scanner Settings</h4>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="concurrent_threads"><i class="fas fa-people-arrows"></i> Concurrent Threads</label>
+                    <input type="number" id="concurrent_threads" name="concurrent_threads" class="form-control"
+                           value="{{ settings.scanner.concurrent_threads }}" min="1" required>
+                    <small class="form-text text-muted">Number of concurrent threads used for scanning.</small>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="request_timeout"><i class="fas fa-clock"></i> Request Timeout (seconds)</label>
+                    <input type="number" id="request_timeout" name="request_timeout" class="form-control"
+                           value="{{ settings.scanner.request_timeout }}" min="1" required>
+                    <small class="form-text text-muted">Timeout duration for HTTP requests during scanning.</small>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="payloads"><i class="fas fa-file-alt"></i> Payloads (one per line)</label>
+                <textarea id="payloads" name="payloads" class="form-control" rows="4" required>{{ settings.scanner.payloads | join('\n') }}</textarea>
+                <small class="form-text text-muted">Enter each payload on a new line.</small>
+            </div>
+            <div class="form-group">
+                <label for="sql_errors"><i class="fas fa-exclamation-triangle"></i> SQL Error Signatures (one per line)</label>
+                <textarea id="sql_errors" name="sql_errors" class="form-control" rows="4" required>{{ settings.scanner.sql_errors | join('\n') }}</textarea>
+                <small class="form-text text-muted">Enter each SQL error signature on a new line.</small>
+            </div>
+            <hr>
+            <h4><i class="fas fa-chart-line"></i> Traffic Checker Settings</h4>
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="request_delay"><i class="fas fa-stopwatch"></i> Request Delay (seconds)</label>
+                    <input type="number" step="0.1" id="request_delay" name="request_delay" class="form-control"
+                           value="{{ settings.traffic_checker.request_delay }}" min="0" required>
+                    <small class="form-text text-muted">Seconds to wait before each traffic check request.</small>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="max_retries"><i class="fas fa-redo"></i> Maximum 403 Retries</label>
+                    <input type="number" id="max_retries" name="max_retries" class="form-control"
+                           value="{{ settings.traffic_checker.max_retries }}" min="0" required>
+                    <small class="form-text text-muted">Maximum number of retries upon receiving a 403 response.</small>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="min_visitors"><i class="fas fa-users"></i> Minimum Monthly Visitor Target</label>
+                    <input type="number" id="min_visitors" name="min_visitors" class="form-control"
+                           value="{{ settings.traffic_checker.min_visitors }}" min="0" required>
+                    <small class="form-text text-muted">Minimum number of monthly visitors to consider a URL.</small>
+                </div>
+            </div>
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="vuln_anti_public" name="vuln_anti_public" {% if settings.vuln_anti_public %}checked{% endif %}>
+                <label class="form-check-label" for="vuln_anti_public"><i class="fas fa-shield-alt"></i> Vuln Anti Public (Prevent scanning URLs from already scanned domains)</label>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Settings</button>
+        </form>
+    </div>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
